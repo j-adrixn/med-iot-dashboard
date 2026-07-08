@@ -9,7 +9,7 @@ import {
   LineChart, Line, AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
-import { Activity, Thermometer, Droplets, Zap, TrendingUp, Cpu } from 'lucide-react';
+import { Activity, Thermometer, Droplets, TrendingUp, Cpu } from 'lucide-react';
 
 interface Reading {
   id: string;
@@ -43,12 +43,16 @@ function NeonTooltip({ active, payload, label }: any) {
     <div style={CUSTOM_TOOLTIP_STYLE}>
       <p style={{ color: 'var(--neon-cyan)', marginBottom: '0.5rem', padding: '0.5rem 0.75rem', borderBottom: '1px solid rgba(0,229,255,0.2)' }}>{label}</p>
       <div style={{ padding: '0.5rem 0.75rem' }}>
-        {payload.map((p: { color: string; name: string; value: number }) => (
-          <div key={p.name} style={{ display: 'flex', justifyContent: 'space-between', gap: '1.5rem', marginBottom: '0.25rem' }}>
-            <span style={{ color: p.color }}>{p.name}</span>
-            <span style={{ color: '#fff', fontWeight: 700 }}>{typeof p.value === 'number' ? p.value.toFixed(2) : p.value}</span>
-          </div>
-        ))}
+        {payload.map((p: { color: string; name: string; value: number }) => {
+          // Mejorar la etiqueta para el tooltip también
+          const displayName = p.name.startsWith('temp') ? 'Temperatura' : p.name.startsWith('hum') ? 'Humedad' : p.name;
+          return (
+            <div key={p.name} style={{ display: 'flex', justifyContent: 'space-between', gap: '1.5rem', marginBottom: '0.25rem' }}>
+              <span style={{ color: p.color }}>{displayName}</span>
+              <span style={{ color: '#fff', fontWeight: 700 }}>{typeof p.value === 'number' ? p.value.toFixed(2) : p.value}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -91,8 +95,10 @@ export default function DashboardPage() {
     return () => unsub();
   }, [user]);
 
-  // Prepare chart data
-  const varKeys = Array.from(new Set(readings.flatMap((r) => Object.keys(r.variables || {}))));
+  // Prepare chart data - FILTRADO SOLO PARA DHT
+  const allowedKeys = ['temperature', 'temp', 'humidity', 'hum'];
+  const varKeys = Array.from(new Set(readings.flatMap((r) => Object.keys(r.variables || {}))))
+    .filter(key => allowedKeys.includes(key.toLowerCase()));
 
   const chartData: ChartPoint[] = readings.map((r) => ({
     time: r.timestamp
@@ -117,10 +123,16 @@ export default function DashboardPage() {
     const stats = getStats(key);
     const icons: Record<string, React.ReactNode> = {
       temperature: <Thermometer size={16} style={{ color: NEON_COLORS[i] }} />,
+      temp: <Thermometer size={16} style={{ color: NEON_COLORS[i] }} />,
       humidity: <Droplets size={16} style={{ color: NEON_COLORS[i] }} />,
-      voltage: <Zap size={16} style={{ color: NEON_COLORS[i] }} />,
+      hum: <Droplets size={16} style={{ color: NEON_COLORS[i] }} />,
     };
-    return { key, stats, color: NEON_COLORS[i], icon: icons[key] || <Activity size={16} style={{ color: NEON_COLORS[i] }} /> };
+
+    // Mejoramos la etiqueta visual (UI) basada en el key
+    const displayLabel = key.startsWith('temp') ? 'Temperatura' : key.startsWith('hum') ? 'Humedad' : key;
+    const unit = key.startsWith('temp') ? '°C' : key.startsWith('hum') ? '%' : '';
+
+    return { key, displayLabel, unit, stats, color: NEON_COLORS[i], icon: icons[key] || <Activity size={16} style={{ color: NEON_COLORS[i] }} /> };
   });
 
   if (loading || (!user && !loading)) {
@@ -143,7 +155,7 @@ export default function DashboardPage() {
           <div>
             <h1 className="font-orbitron" style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>
               <span className="neon-text-green">DASHBOARD</span>{' '}
-              <span style={{ color: 'var(--text-secondary)' }}>ANALÍTICO</span>
+              <span style={{ color: 'var(--text-secondary)' }}>AMBIENTAL</span>
             </h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <span className="status-dot online" />
@@ -170,12 +182,13 @@ export default function DashboardPage() {
         {/* Stat Cards */}
         {statCards.length > 0 && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-            {statCards.map(({ key, stats, color, icon }) => (
+            {statCards.map(({ key, displayLabel, unit, stats, color, icon }) => (
               <StatCard
                 key={key}
                 icon={icon}
-                label={key}
-                value={stats.last.toFixed(2)}
+                label={displayLabel.toUpperCase()}
+                value={stats.last.toFixed(1)}
+                unit={unit}
                 color={color}
               />
             ))}
@@ -185,14 +198,14 @@ export default function DashboardPage() {
         {/* Min/Avg/Max Row */}
         {statCards.length > 0 && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-            {statCards.map(({ key, stats, color }) => (
+            {statCards.map(({ key, displayLabel, unit, stats, color }) => (
               <div key={key} className="glass-card" style={{ padding: '1rem 1.25rem', borderColor: `${color}30` }}>
-                <p className="font-orbitron" style={{ fontSize: '0.6rem', color, letterSpacing: '0.12em', marginBottom: '0.75rem' }}>{key.toUpperCase()} — ESTADÍSTICAS</p>
+                <p className="font-orbitron" style={{ fontSize: '0.6rem', color, letterSpacing: '0.12em', marginBottom: '0.75rem' }}>{displayLabel.toUpperCase()} — ESTADÍSTICAS</p>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', textAlign: 'center' }}>
                   {[['MIN', stats.min.toFixed(1)], ['AVG', stats.avg.toFixed(1)], ['MAX', stats.max.toFixed(1)]].map(([lbl, val]) => (
                     <div key={lbl}>
                       <p className="font-mono-tech" style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>{lbl}</p>
-                      <p className="font-orbitron" style={{ fontSize: '0.95rem', color, fontWeight: 700 }}>{val}</p>
+                      <p className="font-orbitron" style={{ fontSize: '0.95rem', color, fontWeight: 700 }}>{val}<span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>{unit}</span></p>
                     </div>
                   ))}
                 </div>
@@ -223,7 +236,7 @@ export default function DashboardPage() {
                 SIN DATOS AÚN
               </p>
               <p className="font-rajdhani" style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                El gráfico se actualizará automáticamente cuando el ESP32 envíe lecturas.
+                El gráfico se actualizará automáticamente cuando el ESP32 envíe lecturas de temperatura y humedad.
               </p>
             </div>
           ) : (
@@ -242,9 +255,9 @@ export default function DashboardPage() {
                   <XAxis dataKey="time" tick={{ fill: '#3a5570', fontFamily: 'Share Tech Mono', fontSize: 10 }} tickLine={false} />
                   <YAxis tick={{ fill: '#3a5570', fontFamily: 'Share Tech Mono', fontSize: 10 }} tickLine={false} axisLine={false} />
                   <Tooltip content={<NeonTooltip />} />
-                  <Legend wrapperStyle={{ fontFamily: 'Orbitron', fontSize: '0.65rem', letterSpacing: '0.1em' }} />
+                  <Legend wrapperStyle={{ fontFamily: 'Orbitron', fontSize: '0.65rem', letterSpacing: '0.1em' }} formatter={(value) => value.startsWith('temp') ? 'Temperatura' : value.startsWith('hum') ? 'Humedad' : value} />
                   {varKeys.map((k, i) => (
-                    <Area key={k} type="monotone" dataKey={k} stroke={NEON_COLORS[i % NEON_COLORS.length]} strokeWidth={2}
+                    <Area key={k} name={k} type="monotone" dataKey={k} stroke={NEON_COLORS[i % NEON_COLORS.length]} strokeWidth={2}
                       fill={`url(#grad-${k})`} dot={false} activeDot={{ r: 4, strokeWidth: 2 }} />
                   ))}
                 </AreaChart>
@@ -254,9 +267,9 @@ export default function DashboardPage() {
                   <XAxis dataKey="time" tick={{ fill: '#3a5570', fontFamily: 'Share Tech Mono', fontSize: 10 }} tickLine={false} />
                   <YAxis tick={{ fill: '#3a5570', fontFamily: 'Share Tech Mono', fontSize: 10 }} tickLine={false} axisLine={false} />
                   <Tooltip content={<NeonTooltip />} />
-                  <Legend wrapperStyle={{ fontFamily: 'Orbitron', fontSize: '0.65rem', letterSpacing: '0.1em' }} />
+                  <Legend wrapperStyle={{ fontFamily: 'Orbitron', fontSize: '0.65rem', letterSpacing: '0.1em' }} formatter={(value) => value.startsWith('temp') ? 'Temperatura' : value.startsWith('hum') ? 'Humedad' : value} />
                   {varKeys.map((k, i) => (
-                    <Line key={k} type="monotone" dataKey={k} stroke={NEON_COLORS[i % NEON_COLORS.length]} strokeWidth={2}
+                    <Line key={k} name={k} type="monotone" dataKey={k} stroke={NEON_COLORS[i % NEON_COLORS.length]} strokeWidth={2}
                       dot={false} activeDot={{ r: 4, fill: NEON_COLORS[i % NEON_COLORS.length] }} />
                   ))}
                 </LineChart>
@@ -266,9 +279,9 @@ export default function DashboardPage() {
                   <XAxis dataKey="time" tick={{ fill: '#3a5570', fontFamily: 'Share Tech Mono', fontSize: 10 }} tickLine={false} />
                   <YAxis tick={{ fill: '#3a5570', fontFamily: 'Share Tech Mono', fontSize: 10 }} tickLine={false} axisLine={false} />
                   <Tooltip content={<NeonTooltip />} />
-                  <Legend wrapperStyle={{ fontFamily: 'Orbitron', fontSize: '0.65rem', letterSpacing: '0.1em' }} />
+                  <Legend wrapperStyle={{ fontFamily: 'Orbitron', fontSize: '0.65rem', letterSpacing: '0.1em' }} formatter={(value) => value.startsWith('temp') ? 'Temperatura' : value.startsWith('hum') ? 'Humedad' : value} />
                   {varKeys.map((k, i) => (
-                    <Bar key={k} dataKey={k} fill={NEON_COLORS[i % NEON_COLORS.length]} radius={[2, 2, 0, 0]}
+                    <Bar key={k} name={k} dataKey={k} fill={NEON_COLORS[i % NEON_COLORS.length]} radius={[2, 2, 0, 0]}
                       fillOpacity={0.8} />
                   ))}
                 </BarChart>
