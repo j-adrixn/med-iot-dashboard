@@ -32,8 +32,8 @@ void loop() {
     http.begin(ENDPOINT_URL);
     http.addHeader("Content-Type", "application/json");
 
-    // ESTRUCTURA ESTRICTA: Coincide con Firestore (variables -> temperature,
-    // humidity)
+    // --- EN TU CÓDIGO ESP32, REEMPLAZA LA CONSTRUCCIÓN DEL JSON POR ESTO ---
+    // Usamos comillas simples para los valores y evitamos problemas de escapado
     String jsonPayload = "{\"deviceToken\":\"" + String(DEVICE_TOKEN) +
                          "\",\"variables\":{\"temperature\":" + String(t) +
                          ",\"humidity\":" + String(h) + "}}";
