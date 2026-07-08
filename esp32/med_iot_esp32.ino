@@ -38,9 +38,9 @@ void loop() {
       http.addHeader("Content-Type", "application/json");
 
       // ESTRUCTURA CORREGIDA: Ajustada a lo que Firestore espera
-      String jsonPayload = "{\"deviceToken\": \"" + String(DEVICE_TOKEN) +
-                           "\", \"variables\": {\"temperature\": " + String(t) +
-                           ", \"humidity\": " + String(h) + "}}";
+      String jsonPayload = "{\"deviceToken\":\"tu-token-secreto\","
+                           "\"variables\":{\"temperature\":" +
+                           String(t) + ",\"humidity\":" + String(h) + "}}";
 
       int httpResponseCode = http.POST(jsonPayload);
 
