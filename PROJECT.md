@@ -5,28 +5,25 @@
 
 ---
 
-## 🚦 ESTADO ACTUAL — 24 Jun 2026
+## 🚦 ESTADO ACTUAL — 08 Jul 2026
 
 | Componente | Estado | Detalle |
 |---|---|---|
-| 🖥️ Frontend Next.js | ✅ Listo | Corriendo en `localhost:3000` |
+| 🖥️ Frontend Next.js | ✅ Listo | Código compilado sin errores con `npm run build` |
 | 🎨 Sistema de diseño | ✅ Listo | Cyberpunk/Neon, 4 páginas completas |
-| 🔐 Google Auth | ✅ Listo | Falta conectar credenciales Firebase |
+| 🔐 Google Auth | ✅ Listo | Funcional (pendiente autorizar dominio Vercel en Firebase) |
 | 🗄️ Firestore listeners | ✅ Listo | Tabla y dashboard en tiempo real |
-| ⚡ Cloud Functions | ✅ Código listo | **Pendiente: deploy** |
-| 🔑 `.env.local` | ⚠️ Creado (Valores Mock) | **Pendiente: reemplazar con credenciales reales** |
-| 📡 ESP32 / Sketch | ✅ Listo | Pendiente: URL del endpoint |
-| 🐍 Simulador Python | ✅ Listo | Pendiente: URL del endpoint |
-| ☁️ Deploy Vercel | ⏳ Pendiente | Requiere `.env.local` completo |
-| 🔥 Deploy Functions | ⏳ Pendiente | Primer paso antes de Vercel |
+| ⚡ Cloud Functions | ✅ Listo | Desplegado y verificado (permisos públicos activos) |
+| 🔑 `.env.local` | ✅ Listo | Configurado con credenciales de Firebase de producción |
+| 📡 ESP32 / Sketch | ✅ Listo | Optimizado y reubicado. Conexión HTTPS estable, intervalo de 3 min |
+| 🐍 Simulador Python | ✅ Listo | Restaurado y funcional (`py esp32/simulator.py`) |
+| ☁️ Deploy Vercel | ✅ Listo | Cuenta creada, GitHub asociado y dashboard configurado |
+| 🔥 Deploy Functions | ✅ Listo | Despliegue de funciones completado con éxito |
 
 ### 🔴 Próxima acción requerida
 
-1. Crear proyecto en **Firebase Console** y habilitar Firestore + Google Auth.
-2. Copiar las credenciales web obtenidas en el archivo `med-iot-web/.env.local`.
-3. Iniciar sesión en la CLI con `npx firebase login`.
-4. Ejecutar `npx firebase deploy --only functions` para desplegar las Cloud Functions y obtener la URL del endpoint.
-5. Configurar el endpoint en `simulator.py` y `med_iot_esp32.ino`.
+1. **Configurar Variables de Entorno en Vercel:** Copiar las credenciales reales de `.env.local` al panel de administración de variables de entorno de tu proyecto en Vercel.
+2. **Autorizar Dominio en Firebase:** Agregar el dominio asignado por Vercel (ej. `tu-proyecto.vercel.app`) en la lista de dominios autorizados de Firebase Console (Authentication -> Settings -> Authorized domains).
 
 ---
 
@@ -151,8 +148,9 @@ Med-IoT/
 │   └── package.json
 │
 ├── esp32/
-│   ├── med_iot_esp32.ino             # Sketch Arduino (DHT22 + HTTPS POST)
-│   └── simulator.py                  # Simulador datos ficticios (Python)
+│   ├── med_iot_esp32/
+│   │   └── med_iot_esp32.ino             # Sketch Arduino (DHT11 + WiFi + HTTPS POST)
+│   └── simulator.py                      # Simulador datos ficticios (Python)
 │
 ├── firebase.json                 ← Config Firebase CLI
 ├── firestore.rules               ← Reglas de seguridad
@@ -260,3 +258,12 @@ Body:    { "deviceId": "esp32-sensor-01", "variables": { "temperature": 25.4 } }
 - **Acción**: Instalación del módulo `requests` en el entorno Python local y modificación de `simulator.py` para reemplazar los caracteres emoji de consola por texto plano ASCII, evitando el fallo de codificación de terminal `UnicodeEncodeError` en Windows.
 - **Detección de Error**: El simulador de ESP32 arrojó un error `403 Forbidden` al intentar postear datos. Se identificó que la Cloud Function se desplegó por defecto en modo privado, restringiendo las llamadas externas que no estén autenticadas mediante OAuth de Google.
 - **Estado de la sesión**: Backend y Frontend conectados con credenciales reales. Pendiente otorgar permisos públicos a la función `postDeviceData` en Google Cloud IAM para permitir que el ESP32 envíe datos, y validar el flujo completo.
+
+### 📅 Sesión: 08 Jul 2026
+- **Acción**: Validación de la compilación de Next.js (`npm run build`) para verificar la consistencia del frontend antes del despliegue de Vercel. Todo compiló correctamente.
+- **Acción**: Validación del endpoint de producción `postDeviceData`. Mediante pruebas con una llamada POST simulada por script, se confirmó que la función responde con éxito `201 Created` y guarda los datos en Firestore (lo que indica que la Cloud Function es pública y el dispositivo `esp32-sensor-01` está bien registrado).
+- **Acción**: Restauración del archivo simulador `esp32/simulator.py` desde el historial de Git para habilitar las pruebas locales rápidas usando el comando `py esp32/simulator.py`.
+- **Acción**: Corrección del sketch del ESP32 en su nueva ruta de proyecto `esp32/med_iot_esp32/med_iot_esp32.ino`. Se corrigieron desajustes de los parámetros HTTP (enviando el token secreto en la cabecera `X-Device-Token` y el ID de dispositivo en el JSON).
+- **Acción**: Resolución de los fallos de desconexión `connection refused` (-1) en el ESP32 mediante la declaración de un cliente seguro global (`WiFiClientSecure`), la inclusión de la cabecera `Connection: close` y la llamada explícita a `client.stop()` tras el envío, permitiendo que la memoria SSL se libere.
+- **Acción**: Configuración del intervalo de envío del ESP32 a 3 minutos (180,000 ms) para prevenir picos de consumo de corriente durante el handshake de HTTPS que causaban caídas de tensión (brownout) y reinicios del microcontrolador.
+- **Estado de la sesión**: El backend funciona y está completamente conectado al ESP32. El usuario completó la vinculación de GitHub y Vercel. Pendiente: configurar las variables de entorno de Firebase en el panel de Vercel y registrar el dominio asignado por Vercel en la consola de Firebase Authentication.
