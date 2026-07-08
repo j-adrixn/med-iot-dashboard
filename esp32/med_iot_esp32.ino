@@ -20,6 +20,7 @@ void setup() {
     delay(500);
     Serial.print(".");
   }
+  Serial.println("\n[OK] WiFi conectado");
 }
 
 void loop() {
@@ -31,9 +32,8 @@ void loop() {
     http.begin(ENDPOINT_URL);
     http.addHeader("Content-Type", "application/json");
 
-    // ESTRUCTURA RIGUROSA PARA EVITAR EL ERROR 400
-    // Estamos enviando un objeto 'variables' que contiene 'temperature' y
-    // 'humidity'
+    // ESTRUCTURA ESTRICTA: Coincide con Firestore (variables -> temperature,
+    // humidity)
     String jsonPayload = "{\"deviceToken\":\"" + String(DEVICE_TOKEN) +
                          "\",\"variables\":{\"temperature\":" + String(t) +
                          ",\"humidity\":" + String(h) + "}}";
