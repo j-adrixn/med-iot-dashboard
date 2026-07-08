@@ -5,11 +5,10 @@
 const char *WIFI_SSID = "Celerity_Maldonado_ext";
 const char *WIFI_PASSWORD = "M@ldon@do/1962";
 
-// Esta es tu URL correcta
+// URL de tu Cloud Function
 const char *ENDPOINT_URL =
     "https://us-central1-med-iot-pastillero.cloudfunctions.net/postDeviceData";
-const char *DEVICE_TOKEN =
-    "tu-token-secreto"; // Asegúrate que sea el mismo en Firebase
+const char *DEVICE_TOKEN = "tu-token-secreto";
 
 #define DHTPIN 4
 #define DHTTYPE DHT11
@@ -19,6 +18,8 @@ void setup() {
   Serial.begin(115200);
   dht.begin();
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+  Serial.print("Conectando a WiFi");
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
@@ -36,15 +37,21 @@ void loop() {
       http.begin(ENDPOINT_URL);
       http.addHeader("Content-Type", "application/json");
 
-      String jsonPayload = "{\"deviceToken\":\"" + String(DEVICE_TOKEN) +
-                           "\",\"temp\":" + String(t) +
-                           ",\"hum\":" + String(h) + "}";
+      // ESTRUCTURA CORREGIDA: Ajustada a lo que Firestore espera
+      String jsonPayload = "{\"deviceToken\": \"" + String(DEVICE_TOKEN) +
+                           "\", \"variables\": {\"temperature\": " + String(t) +
+                           ", \"humidity\": " + String(h) + "}}";
+
       int httpResponseCode = http.POST(jsonPayload);
 
       Serial.printf("[TX] HTTP %d | Temp: %.1f, Hum: %.1f\n", httpResponseCode,
                     t, h);
       http.end();
+    } else {
+      Serial.println("[ERROR] Lectura fallida del sensor");
     }
+  } else {
+    WiFi.reconnect();
   }
   delay(5000);
 }
