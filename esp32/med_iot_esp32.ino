@@ -2,8 +2,8 @@
 #include <HTTPClient.h>
 #include <WiFi.h>
 
-const char *WIFI_SSID = "Celerity_Maldonado_ext";
-const char *WIFI_PASSWORD = "M@ldon@do/1962";
+const char *WIFI_SSID = "adrix";
+const char *WIFI_PASSWORD = "hola12345";
 const char *ENDPOINT_URL =
     "https://us-central1-med-iot-pastillero.cloudfunctions.net/postDeviceData";
 const char *DEVICE_TOKEN = "tu-token-secreto";
