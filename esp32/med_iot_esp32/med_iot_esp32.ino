@@ -3,8 +3,8 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 
-const char *WIFI_SSID = "iPhone de Adrian";
-const char *WIFI_PASSWORD = "hola1234";
+const char *WIFI_SSID = "R-ISTDAB-DOCENTES-2.4G";
+const char *WIFI_PASSWORD = "ID0centes/2025";
 const char *ENDPOINT_URL =
     "https://us-central1-med-iot-pastillero.cloudfunctions.net/postDeviceData";
 const char *DEVICE_ID = "esp32-sensor-01";
