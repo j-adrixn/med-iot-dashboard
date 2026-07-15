@@ -32,31 +32,29 @@ void setup() {
 }
 
 void loop() {
+  // 1. Verificación rápida de WiFi
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("[WIFI] Conexión perdida. Reconectando...");
-    WiFi.disconnect();
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-    delay(2000);
-    return;
+    ESP.restart(); // Si pierde WiFi, es más limpio reiniciar el stack de red
   }
 
   float h = dht.readHumidity();
   float t = dht.readTemperature();
 
   if (!isnan(h) && !isnan(t)) {
-    WiFiClientSecure client;
-    client.setInsecure();
-    // Buffers reducidos: por defecto BearSSL pide ~16KB RX + 16KB TX,
-    // lo cual falla si el heap está fragmentado aunque haya espacio "libre" de
-    // sobra
-    client.setBufferSizes(1024, 512);
+    // Definir cliente dentro del alcance local pero asegurando limpieza
+    WiFiClientSecure *client = new WiFiClientSecure;
+    client->setInsecure();
 
     HTTPClient http;
 
-    if (http.begin(client, ENDPOINT_URL)) {
+    // Usar timeout para que no se quede colgado
+    http.setTimeout(5000);
+
+    if (http.begin(*client, ENDPOINT_URL)) {
       http.addHeader("Content-Type", "application/json");
       http.addHeader("X-Device-Token", DEVICE_TOKEN);
-      http.addHeader("Connection", "close");
+      http.addHeader("Connection",
+                     "close"); // IMPORTANTE: cerrar la conexión tras el POST
 
       String jsonPayload = "{\"deviceId\":\"" + String(DEVICE_ID) +
                            "\",\"variables\":{\"temperature\":" + String(t) +
@@ -64,38 +62,25 @@ void loop() {
 
       int code = http.POST(jsonPayload);
 
-      if (code < 0) {
-        fallosConsecutivos++;
-        Serial.printf("Error de conexión (%d): %s | Heap libre: %d | Bloque "
-                      "max: %d | Fallos seguidos: %d\n",
-                      code, http.errorToString(code).c_str(), ESP.getFreeHeap(),
-                      ESP.getMaxAllocHeap(), fallosConsecutivos);
+      if (code > 0) {
+        fallosConsecutivos = 0;
+        Serial.printf("Respuesta: %d | Temp: %.1f, Hum: %.1f\n", code, t, h);
       } else {
-        fallosConsecutivos = 0; // se resetea con cualquier éxito
-        Serial.printf("Respuesta: %d | Temp: %.1f, Hum: %.1f | Heap libre: %d "
-                      "| Bloque max: %d\n",
-                      code, t, h, ESP.getFreeHeap(), ESP.getMaxAllocHeap());
+        fallosConsecutivos++;
+        Serial.printf("Error HTTP: %s\n", http.errorToString(code).c_str());
       }
-      http.end();
-    } else {
-      fallosConsecutivos++;
-      Serial.println("[HTTP] No se pudo inicializar la conexión");
+      http.end(); // Libera el recurso HTTP
     }
 
-    client.stop();
+    delete client; // Libera la memoria del cliente SSL explícitamente
   } else {
     Serial.println("[DHT] Error al leer el sensor");
   }
 
-  // Red de seguridad: si el heap ya no se recupera, reiniciar antes de quedar
-  // en loop muerto
+  // Si llegamos a los fallos máximos, reinicio de hardware
   if (fallosConsecutivos >= MAX_FALLOS_ANTES_DE_REINICIAR) {
-    Serial.println(
-        "[FATAL] Demasiados fallos consecutivos. Reiniciando ESP32...");
-    delay(1000);
     ESP.restart();
   }
 
-  Serial.println("Esperando 1 minuto (60000 ms) para la siguiente lectura...");
-  delay(60000);
+  delay(60000); // 1 minuto
 }
