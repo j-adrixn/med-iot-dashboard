@@ -5,7 +5,7 @@
 
 ---
 
-## 🚦 ESTADO ACTUAL — 08 Jul 2026
+## 🚦 ESTADO ACTUAL — 21 Jul 2026
 
 | Componente | Estado | Detalle |
 |---|---|---|
@@ -18,12 +18,12 @@
 | 📡 ESP32 / Sketch | ✅ Listo | Optimizado y reubicado. Conexión HTTPS estable, intervalo de 3 min |
 | 🐍 Simulador Python | ✅ Listo | Restaurado y funcional (`py esp32/simulator.py`) |
 | ☁️ Deploy Vercel | ✅ Listo | Cuenta creada, GitHub asociado y dashboard configurado |
-| 🔥 Deploy Functions | ✅ Listo | Despliegue de funciones completado con éxito |
+| 🔥 Deploy Functions | ✅ Listo | Despliegue de funciones y alertas de Telegram activo con éxito |
+| 📢 Alertas Telegram | ✅ Listo | Integradas en backend y frontend con umbral configurable |
 
 ### 🔴 Próxima acción requerida
 
-1. **Configurar Variables de Entorno en Vercel:** Copiar las credenciales reales de `.env.local` al panel de administración de variables de entorno de tu proyecto en Vercel.
-2. **Autorizar Dominio en Firebase:** Agregar el dominio asignado por Vercel (ej. `tu-proyecto.vercel.app`) en la lista de dominios autorizados de Firebase Console (Authentication -> Settings -> Authorized domains).
+1. **Autorizar Dominio en Firebase (Si no se ha hecho):** Agregar el dominio asignado por Vercel (ej. `tu-proyecto.vercel.app`) en la lista de dominios autorizados de Firebase Console (Authentication -> Settings -> Authorized domains).
 
 ---
 
@@ -106,7 +106,7 @@
 - [ ] Página de gestión de dispositivos (agregar/ver/eliminar desde la UI)
 - [ ] Filtros de fecha en tabla `/data`
 - [ ] Selector de dispositivo en dashboard (cuando haya múltiples ESP32)
-- [ ] Alertas configurables si variable supera umbral
+- [x] Alertas configurables si variable supera umbral
 - [ ] Protección de rutas con middleware de Next.js (`middleware.ts`)
 - [ ] Página de perfil de usuario
 
@@ -267,3 +267,14 @@ Body:    { "deviceId": "esp32-sensor-01", "variables": { "temperature": 25.4 } }
 - **Acción**: Resolución de los fallos de desconexión `connection refused` (-1) en el ESP32 mediante la declaración de un cliente seguro global (`WiFiClientSecure`), la inclusión de la cabecera `Connection: close` y la llamada explícita a `client.stop()` tras el envío, permitiendo que la memoria SSL se libere.
 - **Acción**: Configuración del intervalo de envío del ESP32 a 3 minutos (180,000 ms) para prevenir picos de consumo de corriente durante el handshake de HTTPS que causaban caídas de tensión (brownout) y reinicios del microcontrolador.
 - **Estado de la sesión**: El backend funciona y está completamente conectado al ESP32. El usuario completó la vinculación de GitHub y Vercel. Pendiente: configurar las variables de entorno de Firebase en el panel de Vercel y registrar el dominio asignado por Vercel en la consola de Firebase Authentication.
+
+### 📅 Sesión: 21 Jul 2026
+- **Acción**: Implementación del sistema de Alertas de Telegram tanto en Backend como en Frontend.
+- **Acción**: Adición de constantes y la función helper `enviarAlertaTelegram` en `firebase-functions/index.js` usando `fetch` nativo de Node.js, evaluando si el sensor supera el umbral configurado.
+- **Acción**: Implementación de la bandera booleana `alertaEnviada` en la base de datos Firestore (documento del dispositivo) para evitar el spam de alertas en Telegram, reseteando la bandera automáticamente cuando el valor cae bajo el umbral.
+- **Acción**: Integración del panel interactivo de Alertas en `med-iot-web/src/app/dashboard/page.tsx`, con un slider de rango cyberpunk y badge visual parpadeante para indicar estados críticos.
+- **Acción**: Persistencia del umbral crítico usando `localStorage` en el navegador del usuario.
+- **Acción**: Configuración directa de las credenciales de Telegram del usuario (Token: `8837151012:AAEtUX7RSP_QrxlcfD-BErsuEj1nOpZ0OME` y Chat ID: `8986965123`) aportadas por capturas de pantalla en ambos entornos.
+- **Corrección de Error**: El despliegue de las Cloud Functions arrojó inicialmente el fallo `admin.firestore is not a function`. Se corrigió migrando a la sintaxis moderna `getFirestore` de `firebase-admin/firestore`.
+- **Corrección de Error**: El despliegue intentó actualizar la Cloud Function a 2ª Generación por defecto al actualizar las dependencias a la última versión (v6/v7), arrojando el error `Upgrading from 1st Gen to 2nd Gen is not yet supported`. Se solucionó degradando la SDK local a la versión `5.x`, forzando el despliegue correcto como 1ª Generación en Node.js 22.
+- **Estado de la sesión**: Alertas de Telegram operativas al 100%. Código compilado exitosamente y desplegado tanto en Firebase Cloud Functions como en GitHub/Vercel (mediante push automático).
