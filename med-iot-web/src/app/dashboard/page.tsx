@@ -16,7 +16,7 @@ const CHAT_ID = "8986965123";               // Reemplazar con tu ID de chat o ca
  * Envía una alerta a Telegram desde el navegador usando fetch.
  */
 async function enviarAlertaTelegramCliente(mensaje: string) {
-  if (TELEGRAM_TOKEN === "TU_TELEGRAM_TOKEN" || CHAT_ID === "TU_CHAT_ID") {
+  if ((TELEGRAM_TOKEN as string) === "TU_TELEGRAM_TOKEN" || (CHAT_ID as string) === "TU_CHAT_ID") {
     console.warn("⚠️ Telegram no configurado en el cliente. Ignorando alerta.");
     return;
   }
@@ -131,13 +131,13 @@ export default function DashboardPage() {
     const q = query(collection(db, 'readings'), orderBy('timestamp', 'desc'), limit(50));
     const unsub = onSnapshot(q, (snap) => {
       const data: Reading[] = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Reading));
-      
+
       // Realizar validación del umbral y alertas en el frontend
       if (data.length > 0) {
         const latest = data[0]; // Primer elemento en el query desc es el más reciente
         if (latest && latest.variables) {
-          const tempVal = latest.variables.temperature !== undefined 
-            ? latest.variables.temperature 
+          const tempVal = latest.variables.temperature !== undefined
+            ? latest.variables.temperature
             : latest.variables.temp;
 
           if (tempVal !== undefined) {
@@ -276,11 +276,11 @@ export default function DashboardPage() {
               />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem' }}>
                 <span className="font-mono-tech" style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Telegram Status:</span>
-                <span 
-                  className="font-orbitron" 
-                  style={{ 
-                    fontSize: '0.65rem', 
-                    color: alertaEnviadaCliente ? '#ff0055' : '#00ff88', 
+                <span
+                  className="font-orbitron"
+                  style={{
+                    fontSize: '0.65rem',
+                    color: alertaEnviadaCliente ? '#ff0055' : '#00ff88',
                     fontWeight: 700,
                   }}
                 >
