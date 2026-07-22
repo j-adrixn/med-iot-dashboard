@@ -15,11 +15,12 @@
 | 🗄️ Firestore listeners | ✅ Listo | Tabla y dashboard en tiempo real |
 | ⚡ Cloud Functions | ✅ Listo | Desplegado y verificado (permisos públicos activos) |
 | 🔑 `.env.local` | ✅ Listo | Configurado con credenciales de Firebase de producción |
-| 📡 ESP32 / Sketch | ✅ Listo | Optimizado y reubicado. Conexión HTTPS estable, intervalo de 3 min |
-| 🐍 Simulador Python | ✅ Listo | Restaurado y funcional (`py esp32/simulator.py`) |
+| 📡 ESP32 / Sketch | ✅ Listo | Listo para flashear. Token, WiFi y pin GPIO 4 verificados |
+| 🐍 Simulador Python | ✅ Listo | Probado con éxito: 16 lecturas enviadas (`201 OK`) |
 | ☁️ Deploy Vercel | ✅ Listo | Cuenta creada, GitHub asociado y dashboard configurado |
-| 🔥 Deploy Functions | ✅ Listo | Despliegue de funciones y alertas de Telegram activo con éxito |
-| 📢 Alertas Telegram | ✅ Listo | Integradas en backend y frontend con umbral configurable |
+| 🔥 Deploy Functions | ✅ Listo | Umbral ajustado a **28°C** para prueba IRL con sensor real |
+| 📢 Alertas Telegram | ✅ Listo | Backend (Cloud Function) + Frontend (Vanilla JS) operativos |
+| 📊 Monitor Vanilla JS | ✅ Listo | `vanilla-monitor/` disponible en Vercel en `/monitor/` |
 
 ### 🔴 Próxima acción requerida
 
@@ -278,3 +279,16 @@ Body:    { "deviceId": "esp32-sensor-01", "variables": { "temperature": 25.4 } }
 - **Corrección de Error**: El despliegue de las Cloud Functions arrojó inicialmente el fallo `admin.firestore is not a function`. Se corrigió migrando a la sintaxis moderna `getFirestore` de `firebase-admin/firestore`.
 - **Corrección de Error**: El despliegue intentó actualizar la Cloud Function a 2ª Generación por defecto al actualizar las dependencias a la última versión (v6/v7), arrojando el error `Upgrading from 1st Gen to 2nd Gen is not yet supported`. Se solucionó degradando la SDK local a la versión `5.x`, forzando el despliegue correcto como 1ª Generación en Node.js 22.
 - **Estado de la sesión**: Alertas de Telegram operativas al 100%. Código compilado exitosamente y desplegado tanto en Firebase Cloud Functions como en GitHub/Vercel (mediante push automático).
+
+### 📅 Sesión: 21 Jul 2026 (Continuación — Vanilla JS Monitor)
+- **Acción**: Creación de `vanilla-monitor/index.html` con el elemento `<canvas id="miGrafico">` y el CDN de Chart.js (`cdn.jsdelivr.net/npm/chart.js`) al final del `<body>`, sin ningún framework CSS ni JS.
+- **Acción**: Creación de `vanilla-monitor/app.js` en JavaScript puro (Vanilla JS). Incluye: inicialización tradicional de Chart.js con `new Chart(ctx, config)`, lectura en tiempo real de Firestore con `onSnapshot`, actualización dinámica del gráfico con `chart.update()`, función `enviarAlertaTelegram` usando `fetch()` HTTP POST, y la bandera booleana `alertaEnviada` para evitar spam de notificaciones.
+- **Corrección**: El primer borrador usaba Firebase Realtime Database (`getDatabase` + `onValue`). Se corrigió a **Firestore** (`getFirestore` + `onSnapshot` sobre la colección `readings`), que es la base de datos real del proyecto.
+- **Corrección**: Se ajustaron los nombres de campo del payload de Firestore para coincidir con la estructura real escrita por la Cloud Function: `data.variables.temperature` y `data.variables.humidity` (en lugar de campos ficticios).
+- **Corrección**: Se añadió conversión del `Timestamp` de Firestore a hora legible con `.toDate().toLocaleTimeString()`.
+- **Acción**: Adición de un segundo dataset al gráfico Chart.js para mostrar **Humedad (%)** en color verde, además de Temperatura en azul, aprovechando que el DHT11 envía ambas variables.
+- **Acción**: Despliegue del `vanilla-monitor` a Vercel copiando los archivos a `med-iot-web/public/monitor/`. Con esto, la página está accesible en la URL de producción en la ruta `/monitor/` sin configuración adicional.
+- **Verificación del ESP32**: Se revisó el sketch `esp32/med_iot_esp32/med_iot_esp32.ino` y se confirmó que todos los parámetros son correctos y no requieren cambios: WiFi (`R-ISTDAB-DOCENTES-2.4G`), token (`tu-token-secreto`, verificado porque el simulador Python obtuvo `201 OK` en producción con ese mismo valor), endpoint, y pin `GPIO 4` (confirmado por el usuario).
+- **Acción (Prueba IRL)**: Se bajó el `UMBRAL_CRITICO` en `firebase-functions/index.js` de `80°C` a **`28°C`** para poder probar el sistema de alertas de Telegram con el sensor real a temperatura ambiente (temperatura corporal de la mano ~36°C supera el umbral).
+- **Acción**: Redespliegue de la Cloud Function con el nuevo umbral de `28°C` a Firebase (Node.js 22, 1ª Generación).
+- **Estado de la sesión**: Monitor Vanilla JS operativo y desplegado. ESP32 listo para flashear. Sistema de alertas configurado para prueba IRL con sensor real. Pendiente: ejecutar prueba física con ESP32 + DHT11 y (después de validar) restaurar `UMBRAL_CRITICO = 80` en producción.

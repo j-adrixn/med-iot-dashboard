@@ -11,7 +11,7 @@ const db = getFirestore();
 // ==========================================
 const TELEGRAM_TOKEN = "8837151012:AAEtUX7RSP_QrxlcfD-BErsuEj1nOpZ0OME"; // Reemplazar con el token real de tu Bot
 const CHAT_ID = "8986965123";               // Reemplazar con tu ID de chat o canal real
-const UMBRAL_CRITICO = 80;                  // Umbral crítico para variables de temperatura
+const UMBRAL_CRITICO = 28;                  // Umbral de prueba IRL — superable con la mano (temp. corporal ~36°C)
 
 /**
  * Envía un mensaje a Telegram utilizando la API de Bot de Telegram y fetch nativo.
