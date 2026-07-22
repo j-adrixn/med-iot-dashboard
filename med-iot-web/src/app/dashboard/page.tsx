@@ -9,17 +9,15 @@ import { db } from '@/lib/firebase';
 // ==========================================
 // CONFIGURACIÓN DE ALERTAS DE TELEGRAM (CLIENTE)
 // ==========================================
-const TELEGRAM_TOKEN = "8837151012:AAEtUX7RSP_QrxlcfD-BErsuEj1nOpZ0OME"; // Reemplazar con el token real de tu Bot
-const CHAT_ID = "8986965123";               // Reemplazar con tu ID de chat o canal real
+const TELEGRAM_TOKEN = "8837151012:AAEtUX7RSP_QrxlcfD-BErsuEj1nOpZ0OME";
+const CHAT_ID = "8986965123";
 
 /**
  * Envía una alerta a Telegram desde el navegador usando fetch.
  */
 async function enviarAlertaTelegramCliente(mensaje: string) {
-  if ((TELEGRAM_TOKEN as string) === "TU_TELEGRAM_TOKEN" || (CHAT_ID as string) === "TU_CHAT_ID") {
-    console.warn("⚠️ Telegram no configurado en el cliente. Ignorando alerta.");
-    return;
-  }
+  // Validación de texto genérico eliminada para evitar errores de compilación en Vercel
+
   const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(mensaje)}`;
   try {
     const response = await fetch(url, { method: "POST" });
@@ -32,6 +30,7 @@ async function enviarAlertaTelegramCliente(mensaje: string) {
     console.error("❌ Error de red en alerta de cliente:", error);
   }
 }
+
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -71,7 +70,6 @@ function NeonTooltip({ active, payload, label }: any) {
       <p style={{ color: 'var(--neon-cyan)', marginBottom: '0.5rem', padding: '0.5rem 0.75rem', borderBottom: '1px solid rgba(0,229,255,0.2)' }}>{label}</p>
       <div style={{ padding: '0.5rem 0.75rem' }}>
         {payload.map((p: { color: string; name: string; value: number }) => {
-          // Mejorar la etiqueta para el tooltip también
           const displayName = p.name.startsWith('temp') ? 'Temperatura' : p.name.startsWith('hum') ? 'Humedad' : p.name;
           return (
             <div key={p.name} style={{ display: 'flex', justifyContent: 'space-between', gap: '1.5rem', marginBottom: '0.25rem' }}>
@@ -109,7 +107,6 @@ export default function DashboardPage() {
   const [umbralCritico, setUmbralCritico] = useState(80);
   const [alertaEnviadaCliente, setAlertaEnviadaCliente] = useState(false);
 
-  // Cargar umbral guardado de localStorage en el montaje
   useEffect(() => {
     const saved = localStorage.getItem('med_iot_umbral');
     if (saved) {
@@ -132,9 +129,8 @@ export default function DashboardPage() {
     const unsub = onSnapshot(q, (snap) => {
       const data: Reading[] = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Reading));
 
-      // Realizar validación del umbral y alertas en el frontend
       if (data.length > 0) {
-        const latest = data[0]; // Primer elemento en el query desc es el más reciente
+        const latest = data[0];
         if (latest && latest.variables) {
           const tempVal = latest.variables.temperature !== undefined
             ? latest.variables.temperature
@@ -156,13 +152,12 @@ export default function DashboardPage() {
         }
       }
 
-      setReadings(data.reverse()); // chronological for charts
+      setReadings(data.reverse());
       setDataLoading(false);
     });
     return () => unsub();
   }, [user, umbralCritico, alertaEnviadaCliente]);
 
-  // Prepare chart data - FILTRADO SOLO PARA DHT
   const allowedKeys = ['temperature', 'temp', 'humidity', 'hum'];
   const varKeys = Array.from(new Set(readings.flatMap((r) => Object.keys(r.variables || {}))))
     .filter(key => allowedKeys.includes(key.toLowerCase()));
@@ -174,7 +169,6 @@ export default function DashboardPage() {
     ...Object.fromEntries(varKeys.map((k) => [k, r.variables?.[k] ?? null])),
   }));
 
-  // Stats
   const getStats = (key: string) => {
     const vals = readings.map((r) => r.variables?.[key]).filter((v) => v !== undefined) as number[];
     if (!vals.length) return { last: 0, avg: 0, max: 0, min: 0 };
@@ -195,7 +189,6 @@ export default function DashboardPage() {
       hum: <Droplets size={16} style={{ color: NEON_COLORS[i] }} />,
     };
 
-    // Mejoramos la etiqueta visual (UI) basada en el key
     const displayLabel = key.startsWith('temp') ? 'Temperatura' : key.startsWith('hum') ? 'Humedad' : key;
     const unit = key.startsWith('temp') ? '°C' : key.startsWith('hum') ? '%' : '';
 
@@ -217,7 +210,6 @@ export default function DashboardPage() {
   return (
     <div style={{ minHeight: '90vh', padding: '2rem 1.5rem' }}>
       <div style={{ maxWidth: '1300px', margin: '0 auto' }}>
-        {/* Header */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '2rem' }}>
           <div>
             <h1 className="font-orbitron" style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.5rem' }}>
@@ -231,7 +223,6 @@ export default function DashboardPage() {
               </span>
             </div>
           </div>
-          {/* Chart type switcher */}
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             {(['area', 'line', 'bar'] as const).map((type) => (
               <button
@@ -246,7 +237,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Alertas Configuración y Status */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
           <div className="glass-card" style={{ padding: '1.25rem', borderColor: alertaEnviadaCliente ? '#ff0055' : 'rgba(0, 229, 255, 0.2)' }}>
             <p className="font-orbitron" style={{ fontSize: '0.65rem', color: alertaEnviadaCliente ? '#ff0055' : 'var(--neon-cyan)', letterSpacing: '0.12em', marginBottom: '0.75rem', textTransform: 'uppercase' }}>
@@ -291,7 +281,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Stat Cards */}
         {statCards.length > 0 && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
             {statCards.map(({ key, displayLabel, unit, stats, color, icon }) => (
@@ -307,7 +296,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Min/Avg/Max Row */}
         {statCards.length > 0 && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
             {statCards.map(({ key, displayLabel, unit, stats, color }) => (
@@ -326,7 +314,6 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Main Chart */}
         <div className="glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
             <TrendingUp size={18} style={{ color: 'var(--neon-green)' }} />
@@ -402,7 +389,6 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Last update info */}
         <p className="font-mono-tech" style={{ textAlign: 'right', fontSize: '0.65rem', color: 'var(--text-muted)' }}>
           ÚLTIMA ACTUALIZACIÓN: {readings.length > 0 && readings[readings.length - 1]?.timestamp
             ? readings[readings.length - 1].timestamp.toDate().toLocaleString('es-MX')
