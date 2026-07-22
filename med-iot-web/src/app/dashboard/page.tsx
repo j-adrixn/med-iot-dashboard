@@ -1,10 +1,37 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { collection, query, orderBy, limit, onSnapshot, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+
+// ==========================================
+// CONFIGURACIÓN DE ALERTAS DE TELEGRAM (CLIENTE)
+// ==========================================
+const TELEGRAM_TOKEN = "8837151012:AAEtUX7RSP_QrxlcfD-BErsuEj1nOpZ0OME"; // Reemplazar con el token real de tu Bot
+const CHAT_ID = "8986965123";               // Reemplazar con tu ID de chat o canal real
+
+/**
+ * Envía una alerta a Telegram desde el navegador usando fetch.
+ */
+async function enviarAlertaTelegramCliente(mensaje: string) {
+  if (TELEGRAM_TOKEN === "TU_TELEGRAM_TOKEN" || CHAT_ID === "TU_CHAT_ID") {
+    console.warn("⚠️ Telegram no configurado en el cliente. Ignorando alerta.");
+    return;
+  }
+  const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(mensaje)}`;
+  try {
+    const response = await fetch(url, { method: "POST" });
+    if (!response.ok) {
+      console.error(`❌ Error en Telegram API (Cliente): ${response.statusText}`);
+    } else {
+      console.log("✅ Alerta enviada con éxito a Telegram desde el Cliente.");
+    }
+  } catch (error) {
+    console.error("❌ Error de red en alerta de cliente:", error);
+  }
+}
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -79,6 +106,21 @@ export default function DashboardPage() {
   const [readings, setReadings] = useState<Reading[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [activeChart, setActiveChart] = useState<'line' | 'area' | 'bar'>('area');
+  const [umbralCritico, setUmbralCritico] = useState(80);
+  const [alertaEnviadaCliente, setAlertaEnviadaCliente] = useState(false);
+
+  // Cargar umbral guardado de localStorage en el montaje
+  useEffect(() => {
+    const saved = localStorage.getItem('med_iot_umbral');
+    if (saved) {
+      setUmbralCritico(parseFloat(saved));
+    }
+  }, []);
+
+  const handleUmbralChange = (newVal: number) => {
+    setUmbralCritico(newVal);
+    localStorage.setItem('med_iot_umbral', newVal.toString());
+  };
 
   useEffect(() => {
     if (!loading && !user) router.push('/login');
@@ -89,11 +131,36 @@ export default function DashboardPage() {
     const q = query(collection(db, 'readings'), orderBy('timestamp', 'desc'), limit(50));
     const unsub = onSnapshot(q, (snap) => {
       const data: Reading[] = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Reading));
+      
+      // Realizar validación del umbral y alertas en el frontend
+      if (data.length > 0) {
+        const latest = data[0]; // Primer elemento en el query desc es el más reciente
+        if (latest && latest.variables) {
+          const tempVal = latest.variables.temperature !== undefined 
+            ? latest.variables.temperature 
+            : latest.variables.temp;
+
+          if (tempVal !== undefined) {
+            if (tempVal > umbralCritico) {
+              if (!alertaEnviadaCliente) {
+                const mensaje = `⚠️ ¡ALERTA CLIENTE! El sensor superó el umbral. Valor: ${tempVal}°C (Umbral: ${umbralCritico}°C)`;
+                enviarAlertaTelegramCliente(mensaje);
+                setAlertaEnviadaCliente(true);
+              }
+            } else {
+              if (alertaEnviadaCliente) {
+                setAlertaEnviadaCliente(false);
+              }
+            }
+          }
+        }
+      }
+
       setReadings(data.reverse()); // chronological for charts
       setDataLoading(false);
     });
     return () => unsub();
-  }, [user]);
+  }, [user, umbralCritico, alertaEnviadaCliente]);
 
   // Prepare chart data - FILTRADO SOLO PARA DHT
   const allowedKeys = ['temperature', 'temp', 'humidity', 'hum'];
@@ -176,6 +243,51 @@ export default function DashboardPage() {
                 {type.toUpperCase()}
               </button>
             ))}
+          </div>
+        </div>
+
+        {/* Alertas Configuración y Status */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+          <div className="glass-card" style={{ padding: '1.25rem', borderColor: alertaEnviadaCliente ? '#ff0055' : 'rgba(0, 229, 255, 0.2)' }}>
+            <p className="font-orbitron" style={{ fontSize: '0.65rem', color: alertaEnviadaCliente ? '#ff0055' : 'var(--neon-cyan)', letterSpacing: '0.12em', marginBottom: '0.75rem', textTransform: 'uppercase' }}>
+              ⚠️ PANEL DE ALERTAS DE TELEGRAM
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="font-mono-tech" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Umbral Crítico:</span>
+                <span className="font-orbitron" style={{ fontSize: '1rem', color: alertaEnviadaCliente ? '#ff0055' : '#fff', fontWeight: 700 }}>
+                  {umbralCritico}°C
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={umbralCritico}
+                onChange={(e) => handleUmbralChange(parseFloat(e.target.value))}
+                style={{
+                  width: '100%',
+                  accentColor: alertaEnviadaCliente ? '#ff0055' : 'var(--neon-cyan)',
+                  cursor: 'pointer',
+                  background: 'rgba(255,255,255,0.1)',
+                  height: '4px',
+                  borderRadius: '2px',
+                }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem' }}>
+                <span className="font-mono-tech" style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Telegram Status:</span>
+                <span 
+                  className="font-orbitron" 
+                  style={{ 
+                    fontSize: '0.65rem', 
+                    color: alertaEnviadaCliente ? '#ff0055' : '#00ff88', 
+                    fontWeight: 700,
+                  }}
+                >
+                  {alertaEnviadaCliente ? '🔴 ALERTA ENVIADA' : '🟢 SISTEMA SEGURO'}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
