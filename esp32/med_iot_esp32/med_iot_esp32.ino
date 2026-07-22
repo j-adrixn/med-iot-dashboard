@@ -82,5 +82,5 @@ void loop() {
     ESP.restart();
   }
 
-  delay(60000); // 1 minuto
+  delay(10000); // 10 seg
 }
